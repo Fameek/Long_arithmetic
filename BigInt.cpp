@@ -1,35 +1,37 @@
 #include <iostream>
 #include <string>
+#include <algorithm>
 
 class BigInt {
-	std::string value; // значение числа
-	bool isNeg; // флаг отрицательности
+	std::string value;
+	bool isNeg;
 
 public:
 	BigInt(); //check
 	BigInt(long x); //check
-	BigInt(std::string &value); //check
+	BigInt(const std::string& value); //check
 	BigInt(const BigInt& bigInt);
 
-	const std::string &getValue() const; //check
+	const std::string& getValue() const; //check
 	const bool getIsNeg() const; // check
 
-	const bool operator == (const BigInt &bigInt) const; //check
-	const bool operator != (const BigInt &bigInt) const; //check
-	const bool operator < (const BigInt &bigInt) const; //check 
-	const bool operator > (const BigInt &bigInt) const; // check
+	const bool operator == (const BigInt& bigInt) const; //check
+	const bool operator != (const BigInt& bigInt) const; //check
+	const bool operator < (const BigInt& bigInt) const; //check 
+	const bool operator > (const BigInt& bigInt) const; // check
 
-	BigInt &operator = (const BigInt &bigInt); //check
+	BigInt& operator = (const BigInt& bigInt); //check
 
-	BigInt operator + (const BigInt &bigInt) const;
-	BigInt operator - (const BigInt &bigInt) const;
-	BigInt operator * (const BigInt &bigInt) const;
+	BigInt operator + (const BigInt& bigInt) const; // check
+	BigInt operator - (const BigInt& bigInt) const; // check
+	BigInt operator * (const BigInt& bigInt) const; // check
+	BigInt operator / (const BigInt& bigInt) const; // check
 
 	BigInt operator+(); //check
-	BigInt operator-(); //check
+	BigInt operator-() const&&; //check
 
-	friend std::istream &operator >> (std::istream &stream, BigInt &bigInt); //check
-	friend std::ostream &operator << (std::ostream &stream, const BigInt &bigInt); //check
+	friend std::istream& operator >> (std::istream& stream, BigInt& bigInt); //check
+	friend std::ostream& operator << (std::ostream& stream, const BigInt& bigInt); //check
 };
 
 BigInt::BigInt() {
@@ -42,12 +44,12 @@ BigInt::BigInt(long x) {
 	this->value = std::to_string(isNeg ? -x : x);
 }
 
-BigInt::BigInt(std::string &value) {
+BigInt::BigInt(const std::string& value) {
 	if (value.length() == 0) {
 		this->value = "0";
 		this->isNeg = false;
 		return;
-	} 
+	}
 
 	isNeg = value[0] == '-';
 	this->value = value.substr(isNeg);
@@ -70,7 +72,7 @@ BigInt::BigInt(const BigInt& bigInt) {
 	this->isNeg = bigInt.getIsNeg();
 }
 
-const std::string &BigInt::getValue() const {
+const std::string& BigInt::getValue() const {
 	return value;
 }
 
@@ -78,18 +80,18 @@ const bool BigInt::getIsNeg() const {
 	return isNeg;
 }
 
-const bool BigInt::operator == (const BigInt &bigInt) const {
+const bool BigInt::operator == (const BigInt& bigInt) const {
 	return ((value == bigInt.getValue() && isNeg == bigInt.getIsNeg()) ? true : false);
 }
 
-const bool BigInt::operator != (const BigInt &bigInt) const {
-	return (value != bigInt.getValue() || isNeg != bigInt.getIsNeg()) ? true : false; 
+const bool BigInt::operator != (const BigInt& bigInt) const {
+	return (value != bigInt.getValue() || isNeg != bigInt.getIsNeg()) ? true : false;
 }
 
-const bool BigInt::operator < (const BigInt &bigInt) const {
+const bool BigInt::operator < (const BigInt& bigInt) const {
 	std::string value2 = bigInt.getValue();
 	int len1 = value.length();
-	int len2 = value2.length(); 
+	int len2 = value2.length();
 
 	if (isNeg == bigInt.getIsNeg()) {
 		if (len1 != len2) {
@@ -106,11 +108,11 @@ const bool BigInt::operator < (const BigInt &bigInt) const {
 	return isNeg;
 }
 
-const bool BigInt::operator > (const BigInt &bigInt) const {
+const bool BigInt::operator > (const BigInt& bigInt) const {
 	return !(*this < bigInt || *this == bigInt);;
 }
 
-BigInt &BigInt::operator = (const BigInt &bigInt) {
+BigInt& BigInt::operator = (const BigInt& bigInt) {
 	value = bigInt.getValue();
 	isNeg = bigInt.getIsNeg();
 
@@ -121,39 +123,51 @@ BigInt BigInt::operator +() {
 	return BigInt(*this);
 }
 
-BigInt BigInt::operator -() {
-	std::string choice = isNeg ? value : std::string("-") + value;
-	return BigInt(choice);
+BigInt BigInt::operator -() const&& {
+	return BigInt(isNeg ? value : std::string("-") + value);
 }
 
-BigInt BigInt::operator + (const BigInt &bigInt) const {
+BigInt BigInt::operator + (const BigInt& bigInt) const {
 	if (isNeg == bigInt.getIsNeg()) {
 		std::string num2 = bigInt.getValue();
 
-		size_t len1 = value.length();
-		size_t len2 = num2.length();
-		size_t length = 1 + std::max(len1, len2); //результат суммы равен максимальной длине одного из чисел (+ 1 из-за возможного смещения разряда)
+		size_t len1 = value.length(); // 2
+		size_t len2 = num2.length(); // 2
+		size_t length = 1 + std::max(len1, len2); // 3 //результат суммы равен максимальной длине одного из чисел (+ 1 из-за возможного смещения разряда)
 
-		char* res = new char[length];
+		int* a = new int[length];
+		int* b = new int[length];
+		char* res = new char[length + 1];
 		res[length] = '\0';
 
-		for (size_t i = 0; i < length - 1; i++) {
-			int j = length - 1 - i;
-			res[j] += ((i < len2) ? (num2[len2 - 1 - i] - '0') : 0) + ((i < len1) ? (value[len1 - 1 - i] - '0') : 0);
-			res[j - 1] = res[j] / 10;
-			res[j] = res[j] % 10 + '0';
+		for (size_t i = 0; i < length; i++) {
+			a[i] = (i < len1) ? (value[len1 - 1 - i] - '0') : 0;
+			b[i] = (i < len2) ? (num2[len2 - 1 - i] - '0') : 0;
+			res[i] = 0;
 		}
 
-		res[0] += '0';
+		for (size_t i = 0; i < length; i++) {
+			res[length - 1 - i] += a[i] + b[i];
+			res[length - 1 - 1 - i] += res[length - 1 - i] / 10;
+			res[length - 1 - i] %= 10;
+		}
+
+		for (size_t i = 0; i < length; i++) {
+			res[length - 1 - i] += '0';
+		}
+
 		std::string result = isNeg ? std::string("-") + std::string(res) : std::string(res);
-		delete [] res;
+		delete[] a;
+		delete[] b;
+		delete[] res;
 		return BigInt(result);
-	} else {
+	}
+	else {
 		return isNeg ? (bigInt - (-BigInt(*this))) : (*this - (-BigInt(bigInt)));
 	}
 }
 
-BigInt BigInt::operator - (const BigInt &bigInt) const {
+BigInt BigInt::operator - (const BigInt& bigInt) const {
 	if (*this == bigInt) {
 		return 0;
 	}
@@ -166,57 +180,78 @@ BigInt BigInt::operator - (const BigInt &bigInt) const {
 
 		int* a = new int[length];
 		int* b = new int[length];
-		a[0] = b[0] = 0;
 
-		char* res = new char[length];
-		res[length - 1] = res[length] = '\0';
+		bool isNegRes = bigInt > * this;
 
-		bool isNegRes = bigInt > *this;
+		char* res = new char[length + 1];
+		res[length] = '\0';
 
-		int sign = 2 * isNegRes - 1;
-
-		for (size_t i = 0; i < length - 1; i++) {
-			a[i] += (i < len1) ? (value[len1 - i - 1] - '0') : 0;
-			b[i] += (i < len2) ? (value2[len2 - i - 1] - '0') : 0;
-
-			b[i + 1] = -isNegRes;
-			a[i + 1] = isNegRes - 1;
-
-			res[length - i - 1] += 10 + sign * (b[i] - a[i]);
-			res[length - i - 1 - 1] = res[length - i - 1] / 10;
-			res[length - i - 1] = res[length - i - 1] % 10 + '0';
+		for (size_t i = 0; i < length; i++) {
+			a[i] = (i < len1) ? (value[len1 - 1 - i] - '0') : 0;
+			b[i] = (i < len2) ? (value2[len2 - 1 - i] - '0') : 0;
+			res[i] = 0;
 		}
 
-		a[length - 1] += (length - 1 < len1) * (value[0] - '0');
-		b[length - 1] += (length - 1 < len2) * (value2[0] - '0');
+		for (size_t i = 0; i < length; i++) {
+			if (!isNegRes) {
+				if (a[i] - b[i] < 0) {
+					a[i + 1] += -1;
+					res[length - 1 - i] += 10 + (a[i] - b[i]);
+					res[length - 1 - i - 1] += res[length - 1 - i] / 10;
+					res[length - 1 - i] %= 10;
+				}
+				else {
+					res[length - 1 - i] += (a[i] - b[i]);
+					res[length - 1 - i - 1] += res[length - 1 - i] / 10;
+					res[length - 1 - i] %= 10;
+				}
+			}
+			else {
+				if (b[i] - a[i] < 0) {
+					b[i + 1] += -1;
+					res[length - 1 - i] += 10 + (b[i] - a[i]);
+					res[length - 1 - i - 1] += res[length - 1 - i] / 10;
+					res[length - 1 - i] %= 10;
+				}
+				else {
+					res[length - 1 - i] += (b[i] - a[i]);
+					res[length - 1 - i - 1] += res[length - 1 - i] / 10;
+					res[length - 1 - i] %= 10;
+				}
+			}
+		}
 
-		res[0] += sign * (b[length - 1] - a[length - 1]) + '0';
+		for (size_t i = 0; i < length; i++) {
+			res[length - 1 - i] += '0';
+		}
 
 		std::string result = isNegRes ? std::string("-") + std::string(res) : std::string(res);
 		delete[] a;
 		delete[] b;
 		delete[] res;
 		return BigInt(result);
-	} else {
+
+	}
+	else {
 		return isNeg && bigInt.getIsNeg() ? (-BigInt(bigInt) - (-BigInt(*this))) : (*this + -BigInt(bigInt));
 	}
 }
 
-BigInt BigInt::operator * (const BigInt &bigInt) const {
+BigInt BigInt::operator * (const BigInt& bigInt) const {
 	if (value == "0" || bigInt.getValue() == "0") {
 		return 0;
 	}
 	std::string value2 = bigInt.getValue();
 
-	size_t len1 = value.length();
-	size_t len2 = value2.length();
-	size_t length = len1 + len2 + 1;
+	size_t len1 = value.length(); // 2
+	size_t len2 = value2.length(); // 2
+	size_t length = len1 + len2 + 1; // 5
 
 	bool isNegRes = isNeg ^ bigInt.getIsNeg();
 
 	int* a = new int[length];
 	int* b = new int[length];
-	char* res = new char[length];
+	char* res = new char[length + 1];
 	res[length] = '\0';
 
 	for (size_t i = 0; i < length; i++) {
@@ -227,14 +262,16 @@ BigInt BigInt::operator * (const BigInt &bigInt) const {
 
 	for (size_t i = 0; i < len1; i++) {
 		for (size_t j = 0; j < len2; j++) {
-		    res[length - 1 - (i + j)] += a[i] * b[j];
-		    res[length - 1 - (i + j + 1)] += res[length - 1 - (i + j)] / 10;
+			res[length - 1 - (i + j)] += a[i] * b[j];
+			res[length - 1 - 1 - (i + j)] += res[length - 1 - (i + j)] / 10;
 			res[length - 1 - (i + j)] %= 10;
 		}
 	}
+
 	for (size_t i = 0; i < length; i++) {
 		res[length - 1 - i] += '0';
 	}
+
 	std::string result = isNegRes ? std::string("-") + std::string(res) : std::string(res);
 	delete[] a;
 	delete[] b;
@@ -243,7 +280,81 @@ BigInt BigInt::operator * (const BigInt &bigInt) const {
 	return BigInt(result);
 }
 
-std::istream &operator >> (std::istream &stream, BigInt &bigInt) {
+BigInt BigInt::operator / (const BigInt& bigInt) const {
+	/*Итоговый алгоритм деления в столбик A / B такой(это и есть школьный алгоритм)
+		1) Выбираем из A слева столько цифр, сколько их в B.Получаем число A1.
+		2) Если А1 меньше чем B, то прибавляем в него еще одну цифру из А.
+		3) Перебором всех цифр С находим самую большую, при которой "элементарное произведение" C * B <= A1(тут хорошо действовать методом дихотомии)
+		4) Записываем цифру С в результат
+		5) Вычитаем СЛЕВА из A "элементарное произведение" C * B
+		6) Если A >= B Повторяем(1), иначе деление закончено и A - остаток от деления
+	*/
+	std::string value1 = value;
+	std::string value2 = bigInt.getValue();
+
+	if (value2 == "0") {
+		throw std::string("Division by zero!");
+	}
+
+	if (value1 == "0") {
+		return 0;
+	}
+
+	if (value1 == "1") {
+		return BigInt(bigInt.getIsNeg() ? -BigInt(*this) : *this);
+	}
+
+	size_t zeroes = 0;
+	while (value2[value2.length() - 1 - zeroes] == '0') {
+		zeroes++;
+	}
+
+	if (zeroes >= value.length()) {
+		return 0;
+	}
+
+	if (zeroes) {
+		value1 = value1.substr(0, value.length() - zeroes);
+		value2 = value2.substr(0, value2.length() - zeroes);
+	}
+
+	bool isNegRes = isNeg ^ bigInt.getIsNeg();
+
+	BigInt tmp(value2);
+	size_t divider_length = value2.length();
+	size_t length = value1.length();
+	size_t index = 0;
+	std::string div; // результат деления
+	std::string v; // подстрока, которая делится на делитель
+
+	while (BigInt(v) < tmp && index < length) {
+		v += value[index++];
+	}
+
+	do {
+		int count = 0;
+		if (BigInt(v) > tmp || BigInt(v) == tmp) {
+			BigInt mod = v;
+
+			while (mod > tmp || mod == tmp) {
+				mod = mod - tmp;
+				count++;
+			}
+
+			v = mod.getValue();
+		}
+
+		div += count + '0';
+
+		if (index <= length) {
+			v += value1[index++];
+		}
+	} while (index <= length);
+
+	return BigInt(isNegRes && div != "0" ? std::string("-") + div : div);
+}
+
+std::istream& operator >> (std::istream& stream, BigInt& bigInt) {
 	std::string value;
 	stream >> value;
 	bigInt = BigInt(value);
@@ -251,14 +362,14 @@ std::istream &operator >> (std::istream &stream, BigInt &bigInt) {
 	return stream;
 }
 
-std::ostream &operator << (std::ostream &stream, const BigInt &bigInt) {
+std::ostream& operator << (std::ostream& stream, const BigInt& bigInt) {
 	if (bigInt.getIsNeg()) {
 		stream << "-";
 	}
 	return stream << bigInt.getValue();
 }
 
-int main () {
+int main() {
 	BigInt a;
 	BigInt b;
 	std::cin >> a;
@@ -266,5 +377,5 @@ int main () {
 	std::cout << a * b << "\n";
 	//std::cout << a - b << "\n";
 	//std::cout << a * b << "\n";
-	
+
 }
